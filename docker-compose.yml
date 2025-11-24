@@ -1,0 +1,21 @@
+services:
+  whatsapp-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatsapp-mcp-server
+    volumes:
+      # Mount the store directory to persist WhatsApp session and database
+      - whatsapp-store:/app/whatsapp-bridge/store
+      # - D:/Data:/app/whatsapp-bridge/store
+    environment:
+      PYTHONUNBUFFERED: 1
+      CGO_ENABLED: 1
+    # Uncomment the lines below if you want to run it in interactive mode for QR code scanning
+    # stdin_open: true
+    # tty: true
+    restart: unless-stopped
+
+volumes:
+  whatsapp-store:
+    driver: local
