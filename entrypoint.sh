@@ -23,7 +23,11 @@ if [ ! -x "whatsapp-bridge" ]; then
     chmod +x whatsapp-bridge
 fi
 
-./whatsapp-bridge &
+# # Wait for file exploring
+# echo "Check files in docker /app/whatsapp-bridge"
+# sleep 20
+
+/app/whatsapp-bridge/whatsapp-bridge &
 BRIDGE_PID=$!
 
 # Wait for bridge to start

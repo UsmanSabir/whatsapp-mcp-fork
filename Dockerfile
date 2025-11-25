@@ -1,50 +1,38 @@
 # Multi-stage build for WhatsApp MCP Server
-FROM golang:1.24-alpine AS go-builder
+# Build the Go binary using Debian-based Go image (glibc)
+FROM golang:1.25.4 AS go-builder
 
-# Install build dependencies for Go
-RUN apk add --no-cache \
-    build-base \
-    sqlite-dev \
-    gcc \
-    musl-dev
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    sqlite3 \
+    libsqlite3-dev
 
 WORKDIR /build
 
 # Copy go bridge source
 COPY whatsapp-bridge /build/
 
-# Build the Go application
+# Build Go app (CGO enabled, glibc-linked)
 RUN go mod download && \
-    go build -o ./whatsapp-bridge main.go
+    CGO_ENABLED=1 go build -o ./whatsapp-bridge main.go
+
 
 # Final stage
 FROM python:3.11-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    # For Go bridge
     ca-certificates \
-    # For FFmpeg audio conversion
     ffmpeg \
-    # For database
     sqlite3 \
     libsqlite3-dev \
-    # For general utilities
     curl \
     git \
-    # For building Python packages
     build-essential \
     gcc \
-    # For running CGO-compiled Go binaries
     libc6 \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Go in the final image (needed for running whatsapp-bridge)
-RUN curl -L https://go.dev/dl/go1.24.0.linux-amd64.tar.gz -o /tmp/go.tar.gz && \
-    tar -C /usr/local -xzf /tmp/go.tar.gz && \
-    rm /tmp/go.tar.gz
-
-ENV PATH="/usr/local/go/bin:$PATH"
 
 # Create app directory
 WORKDIR /app
@@ -52,31 +40,26 @@ WORKDIR /app
 # Copy entire project
 COPY . /app/
 
-# Copy built Go binary from builder stage
+# Copy built Go binary
 COPY --from=go-builder /build/whatsapp-bridge /app/whatsapp-bridge/whatsapp-bridge
 
-# Install Python dependencies for MCP server
+# Install Python deps
 WORKDIR /app/whatsapp-mcp-server
 RUN pip install --no-cache-dir \
     httpx>=0.28.1 \
     "mcp[cli]>=1.6.0" \
     requests>=2.32.3
 
-# Create directory for SQLite database storage
+WORKDIR /app
 RUN mkdir -p /app/whatsapp-bridge/store
 
-# Expose ports (if needed for local development)
 EXPOSE 8000
+EXPOSE 8080
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV CGO_ENABLED=1
 
-# Copy entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
-
-# Set working directory
-WORKDIR /app
 
 ENTRYPOINT ["/app/entrypoint.sh"]

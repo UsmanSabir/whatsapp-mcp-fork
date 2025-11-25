@@ -4,6 +4,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: whatsapp-mcp-server
+    ports:
+      - "8080:8080"
+      - "8000:8000"
     volumes:
       # Mount the store directory to persist WhatsApp session and database
       - whatsapp-store:/app/whatsapp-bridge/store
@@ -12,8 +15,8 @@ services:
       PYTHONUNBUFFERED: 1
       CGO_ENABLED: 1
     # Uncomment the lines below if you want to run it in interactive mode for QR code scanning
-    # stdin_open: true
-    # tty: true
+    stdin_open: true
+    tty: true
     restart: unless-stopped
 
 volumes:
